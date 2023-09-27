@@ -55,4 +55,8 @@ export class UserService {
       throw new UnauthorizedException('Please check your login credentials');
     }
   }
+
+  async testMethod(): Promise<string>{
+    return "Test";
+  }
 }
