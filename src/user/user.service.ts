@@ -6,6 +6,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { JwtPayload } from './jwt-payload.interface';
 import { Repository } from 'typeorm';
+import { BaseResult } from 'src/utils/result/base-result';
+import { SuccessResult } from 'src/utils/result/success-result';
+import { ErrorResult } from 'src/utils/result/error-result';
 
 @Injectable()
 export class UserService {
@@ -14,7 +17,7 @@ export class UserService {
     private readonly jwtService: JwtService,
   ) {}
 
-  async createUser(createUserDto: AuthCredentialsDto): Promise<User> {
+  async createUser(createUserDto: AuthCredentialsDto): Promise<BaseResult> {
     const { username, password, email } = createUserDto;
     // Hash password
 
@@ -29,19 +32,19 @@ export class UserService {
     });
     try {
       await this.userRepository.save(user);
-      return user;
+      return new SuccessResult("User created successfully", user);
     } catch (error) {
       if (error.code === '23505') {
-        throw new ConflictException(`Username ${username} already exists`);
+        return new ErrorResult(`Username ${username} already exists`, null);
       } else {
-        throw new InternalServerErrorException();
+        return new ErrorResult("Error occured createuser method. " + error, error);
       }
     }
   }
 
   async login(
     authCredentialsDto: AuthCredentialsDto,
-  ): Promise<{ accessToken: string }> {
+  ): Promise<BaseResult> {
     const { username, password } = authCredentialsDto;
     const user: User = await this.userRepository.findOneBy({
       username: username,
@@ -50,9 +53,9 @@ export class UserService {
       const payload: JwtPayload = { username };
 
       const accessToken = this.jwtService.sign(payload);
-      return { accessToken };
+      return new SuccessResult("Login successfull", {accessToken: accessToken, user: user, isPasswordMatches: true});
     } else {
-      throw new UnauthorizedException('Please check your login credentials');
+      return new ErrorResult("Please check your login credentials", {user: null});
     }
   }
 
